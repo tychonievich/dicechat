@@ -1,0 +1,15 @@
+{
+    "authors": [
+        "Luther Tychonievich"
+    ],
+    "copyright": "Luther Tychonievich",
+    "dependencies": {
+        "vibe-d": "*",
+        "vibe-d:tls": "*"
+    },
+    "description": "A websocket chat tool with dice rolling and stat storing",
+    "versions": ["VibeDefaultMain"],
+    "subConfigurations":{"vibe-d:tls":"openssl-1.1"},
+    "license": "Public Domain",
+    "name": "dicechat"
+}

@@ -1,0 +1,27 @@
+doctype html
+html
+  head
+    title DiceChat
+    link(rel='stylesheet', href='style.css')
+    script(type='text/javascript').
+      var user = "#{settings.username}"
+      var me = "#{settings.me}"
+      var mayBe = "#{settings.roles}".split('|')
+    script(type='text/javascript', src="scripts/chat.js")
+    - import vibe.data.json;
+    link(rel='stylesheet', href='style.css')
+      
+  body(onload='connect()')
+
+  table
+    thead
+      tr
+        th When
+        th Whom
+        th Roll
+    tbody
+
+  div(id="sender", style="display:flex;")
+    input(type="text", id="roll", style="flex-grow:1", autofocus=true, onkeydown="keypress(event)")
+    input(type="button", value="send text", onclick="newsend()")
+
