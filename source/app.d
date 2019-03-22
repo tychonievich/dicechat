@@ -78,33 +78,26 @@ class DiceRoom {
         try {
             // writer task (fiber, not thread, so no sync needed) sends from room to this connection
             auto writer = runTask({
-                try {
-
 version(none) {
-                    int next_message = 0; // cast(int)r.messages.length - 50; // error if removes `=` or `def`
-                    int generation = r.userGeneration;
-                    if (next_message < 0) next_message = 0;
+                int next_message = 0; // cast(int)r.messages.length - 50; // error if removes `=` or `def`
+                if (next_message < 0) next_message = 0;
+                while (next_message < r.messages.length)
+                    r.messages[next_message++].sendTo(settings, socket);
+} else {
+                auto next_message = cast(int)r.messages.length;
+}
+                socket.send(Json([`archive`:r.archive]).toString);
+                serializeToJson([`date`:stamp, `user`:`server`, `msg`:`Welcome! Type <q>!help</q> to see your options.`]).sendTo(settings, socket);
+                int generation = r.userGeneration;
+                r.listUsers.sendTo(settings, socket);
+                while (socket.connected) {
                     while (next_message < r.messages.length)
                         r.messages[next_message++].sendTo(settings, socket);
-} else {
-                    auto next_message = cast(int)r.messages.length;
-                    int generation = r.userGeneration;
-                    socket.send(Json([`archive`:r.archive]).toString);
-}
-                    serializeToJson([`date`:stamp, `user`:`server`, `msg`:`Welcome! Type <q>!help</q> to see your options.`]).sendTo(settings, socket);
-                    r.listUsers.sendTo(settings, socket);
-                    while (socket.connected) {
-                        while (next_message < r.messages.length)
-                            r.messages[next_message++].sendTo(settings, socket);
-                        if (generation < r.userGeneration) {
-                            generation = r.userGeneration;
-                            r.listUsers.sendTo(settings, socket);
-                        }
-                        r.waitForMessage(next_message, generation);
+                    if (generation < r.userGeneration) {
+                        generation = r.userGeneration;
+                        r.listUsers.sendTo(settings, socket);
                     }
-                } catch (Throwable ex) {
-                    socket.close;
-                    throw ex;
+                    r.waitForMessage(next_message, generation);
                 }
             });
 

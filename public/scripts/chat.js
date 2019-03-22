@@ -402,8 +402,6 @@ function parse(txt, flat) {
     }
 }
 
-
-
 socket = null;
 
 function become(u) {
@@ -431,10 +429,33 @@ function newsend() {
         // help message and other status updates
         helpmsg();
     } else if (txt.length > 0 && socket.readyState == socket.OPEN) {
-        var payload = parse(txt);
+        var base = txt;
+        var kind = 0
+        if (/^!a /.test(txt)) { base = txt.substr(3); kind += 1; }
+        else if (/^!d /.test(txt)) { base = txt.substr(3); kind -= 1; }
+        
+        var payload = parse(base);
+        
+        if (kind) {
+            if ('string' == typeof payload) payload.replace(/d20\b/g, 'd20'+(kind>0?'a':'d'));
+            else if (Array.isArray(payload)) 
+                for (var i=0; i<payload.length; i+=1)
+                    if ('object' == typeof payload[i] && payload[i].op == 'd' && payload[i].d == 20) {
+                        if (payload[i].n == 1) {
+                            payload[i].n = 2;
+                            payload[i].k = kind;
+                        } else if (payload[i].n == 2 && payload[i].k == -kind) {
+                            payload[i].n = 1;
+                            delete payload[i].k;
+                        }
+                    }
+        }
+        
         if (payload == '!help') { helpmsg(); return false; }
         obj = {user:user, as:currentuser, msg:payload}
+//console.log([txt, payload])
         if (flatten(payload) != txt) obj.raw = txt;
+//console.log(obj)
         /*
         // in general, parsing makes the message larger so should be avoided
         // but for variables, it is important to parse them first so the server can store their valuation
@@ -574,9 +595,9 @@ function jsonToText(m, depth) {
     } else if (m.op == 'd') {
         var bit = m.roll.map(function(x){
             if (x.d == 100) {
-                return '<span class="dice d10'+('drop' in x ? ' omit':'')+'" title="d100">'+Math.floor(x['=']/10)+'</span><span class="dice d10'+('drop' in x ? ' omit':'')+'" title="d100">'+(x['=']%10)+'</span>';
+                return '<span class="dice d10'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d100">'+Math.floor(x['=']/10)+'</span><span class="dice d10'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d100">'+(x['=']%10)+'</span>';
             } else {
-                return '<span class="dice d'+x.d+('drop' in x ? ' omit':'')+'" title="d'+x.d+'">'+x['=']+'</span>';
+                return '<span class="dice d'+x.d+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d'+x.d+'">'+x['=']+'</span>';
             }
         }).join('');
         if (depth <= 0 && m.n != 1) return resulter(bit); // bit += ' = ' + String(m['=']).replace(/-/g, '−');
@@ -653,15 +674,10 @@ function helpmsg() {
     if (alias == 2) aliasMsg = '<br/>  <q><tt>.'+alt[0]+' I steal half the gold</tt></q> sends the message <q>I steal half the gold</q> as '+alt[0]+(alt.length > 1 ? '; you can send as <tt>.'+ alt.join('</tt> or <tt>.')+'</tt>' : '.');
     if (alias == 3) aliasMsg = '<br/>  <q><tt>.nodwick I steal half the gold</tt></q> sends the message <q>I steal half the gold</q> as nodwick; you can send as any name you wish.';
     
-    //addFormat('<q><tt>3d4</tt></q> means roll three 4-sided die; <q><tt>d4</tt></q> is shorthand for <q><tt>1d4</tt></q>. <q><tt>d20a</tt></q> means roll with advantage (two keep highest); <q><tt>d20d</tt></q> for disadvantage. Arithmetic with <tt>+-*/</tt> and parentheses works.<br/>\
-//  Macros have a leading <tt>\\</tt> and are expanded anywhere they appear. Defined them with <q><tt>def \\adv d20a</tt></q> or the like; remove with <q><tt>undef \\adv</tt></q>.<br/>\
-//  Variables have a leading <q><tt>$</tt></q> and can be defined as <q><tt>name = 2 + 3</tt></q> or the like; <q><tt>+=</tt></q> and <q><tt>-=</tt></q> also work to update an existing variable.<br/>\
-//  Macros are expanded when used before being sent to the server, so <q><tt>def \\r d20+3</tt></q> rolls a new d20 each time <q><tt>\\r</tt></q> is typed. Variables are evaluated when defined, so <q><tt>r = d20+3</tt></q> rolls the d20 before setting <q><tt>$r</tt></q> to a single fixed value.<br/>\
-//  <q><tt>:DM I steal half the gold</tt></q> sends the message <q>I steal half the gold</q> only to the DM.' + aliasMsg);
-    
     var bits = [
         '<tt>3d4</tt> rolls three d4s; <tt>d4</tt> rolls one',
         'advantage by <tt>d20a</tt>, disadvantage by <tt>d20d</tt>',
+        '<tt>!a rolling text</tt> rolls all d20s with advantage; <tt>!d</tt> with disadvantage',
         'arithmetic with <tt>+ - * / ( )</tt>',
         '<tt>def \\name replace with this</tt> to create a macro; use as <tt>\\name</tt>; remove with <tt>undef \\name</tt>',
         '<tt>name = 3</tt> or <tt>$name = 3</tt> to define a variable; use as <tt>$name</tt>',

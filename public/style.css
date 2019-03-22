@@ -31,6 +31,7 @@ th,td { text-align:left; padding:0.25ex 1ex; }
 td:first-child { font-size:70.7% }
 td:nth-child(3) { border-left: thin solid rgba(0,0,0, 0.5); overflow-wrap:anywhere; }
 tr:nth-child(2n) { background-color:rgba(0,0,0, 0.125); }
+td:nth-child(2) { text-align: right; }
 
 th { background:rgba(0,0,0, 0.5); color:white; }
 
@@ -45,3 +46,8 @@ td > span[title] { box-shadow: 0 0 0.25ex 0.25ex rgba(255,255,255,0.5); padding:
 
 span.computation { font-size: 81.6496580927726%; }
 span.result { }
+
+.d20.r20:not(.omit) { font-weight: bold; color:#040; }
+.d20.r1:not(.omit) { font-weight: bold; color:#400; }
+
+span.computation .d20.r20:not(.omit), span.computation .d20.r1:not(.omit) { font-size: 122.4744871391589%; }
