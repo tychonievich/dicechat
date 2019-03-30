@@ -131,8 +131,9 @@ function inner_paren(lst) {
             else if (open.length > 0) open.pop();
         }
     }
-    var start = open.length > 0 ? open[open.length-1] : begin;
-    lst = make_ast(lst, start, lst.length-1);
+    while (open.length > 1)
+        lst = make_ast(lst, open.pop());
+    lst = make_ast(lst, 0);
 
     //console.log('inner paren =>', lst)
     return lst.length == 1 ? lst[0] : lst;
@@ -154,12 +155,14 @@ function make_ast(lst, s, e) {
     if (('object' == typeof lst) && 'msg' in lst) lst.msg = make_ast(lst.msg);
     if (isAST(lst)) return lst;
     if (Array.isArray(lst)) {
-        if (s === undefined && e === undefined) return inner_paren(lst);
+        if (s === undefined && e === undefined) {
+            // initial call; recur to find terms, then treat as paren
+            for(var i=0; i<lst.length; i+=1) lst[i] = make_ast(lst[i]);
+            return inner_paren(lst);
+        }
         //console.log(lst, s, e);
         var s_pad = (s !== undefined) ? s : 0
         var e_pad = (e !== undefined) ? lst.length - e - 1: 0;
-        // terms
-        for(var i=s_pad; i<lst.length-e_pad; i+=1) lst[i] = make_ast(lst[i]);
         // combine terms
         for(var precedence = 0; precedence < 2; precedence += 1) {
             for(var i=s_pad; i<lst.length-e_pad; i+=1) {
