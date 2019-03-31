@@ -178,7 +178,7 @@ Json rollDice(Json arg) {
                 int n = arg["n"].get!int;
                 scope rolls = new Json[n];
                 int sides = arg["d"].get!int;
-                foreach(i; 0..n) rolls[i] = Json(["d":Json(sides),"=":Json(uniform!`[]`(1,sides))]);
+                foreach(i; 0..n) rolls[i] = Json(["d":Json(sides),"=":Json(uniform!`[]`(sides?1:-1,sides?sides:1))]);
                 if ("k" in arg) {
                     int k = arg["k"].get!int;
                     if (k < 0) {
