@@ -610,7 +610,7 @@ function jsonToText(m, depth) {
             } else if (x.d == 0) {
                 return '<span class="dice dF'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="dF'+'">'+'− +'[x['=']+1]+'</span>';
             } else {
-                return '<span class="dice d'+d+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d'+d+'">'+x['=']+'</span>';
+                return '<span class="dice d'+x.d+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d'+x.d+'">'+x['=']+'</span>';
             }
         }).join('');
         if (depth <= 0 && m.n != 1) return resulter(bit); // bit += ' = ' + String(m['=']).replace(/-/g, '−');
