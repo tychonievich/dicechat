@@ -131,8 +131,9 @@ function inner_paren(lst) {
             else if (open.length > 0) open.pop();
         }
     }
-    var start = open.length > 0 ? open[open.length-1] : begin;
-    lst = make_ast(lst, start, lst.length-1);
+    while (open.length > 1)
+        lst = make_ast(lst, open.pop());
+    lst = make_ast(lst, 0);
 
     //console.log('inner paren =>', lst)
     return lst.length == 1 ? lst[0] : lst;
@@ -154,12 +155,14 @@ function make_ast(lst, s, e) {
     if (('object' == typeof lst) && 'msg' in lst) lst.msg = make_ast(lst.msg);
     if (isAST(lst)) return lst;
     if (Array.isArray(lst)) {
-        if (s === undefined && e === undefined) return inner_paren(lst);
+        if (s === undefined && e === undefined) {
+            // initial call; recur to find terms, then treat as paren
+            for(var i=0; i<lst.length; i+=1) lst[i] = make_ast(lst[i]);
+            return inner_paren(lst);
+        }
         //console.log(lst, s, e);
         var s_pad = (s !== undefined) ? s : 0
         var e_pad = (e !== undefined) ? lst.length - e - 1: 0;
-        // terms
-        for(var i=s_pad; i<lst.length-e_pad; i+=1) lst[i] = make_ast(lst[i]);
         // combine terms
         for(var precedence = 0; precedence < 2; precedence += 1) {
             for(var i=s_pad; i<lst.length-e_pad; i+=1) {
@@ -274,7 +277,7 @@ function flatten(m, depth) {
         if ('k' in m) end = (m.k == 1 ? 'a' : (m.k == -1 ? 'd' : (m.k < 0 ? 'd'+(-m.k) : 'k'+m.k)));
         var front = m.n;
         if (front == 1 || (front == 2 && end.length == 1)) front = '';
-        return front + 'd' + m.d + end;
+        return front + 'd' + (m.d||'F') + end;
     } else if (m.op == '+' || m.op == '−' || m.op == '-') {
         var lhs = flatten(m.lhs, 1);
         var rhs = flatten(m.rhs, 2);
@@ -324,8 +327,11 @@ function parse(txt, flat) {
         // macro definition
         var key = m[1];
         delete macros[key];
-        var macro = RegExp('(?:\\s|\\b|^)\\\\'+key+'\\b', 'gu');
-        if (macro.test(parse(m[2], 2))) throw Error('Refusing to define recursive macro \\'+key+' = '+parse(m[2], 2));
+        var macro = RegExp('(^|[^\\\\])\\\\'+key+'\\b', 'gu');
+        if (macro.test(parse(m[2], 2))) {
+            window.alert('Recursive macros not allowed\n    '+m[2]+'\nexpands to\n    '+parse(m[2], 2)+'\nwhich depends on \\'+m[1])
+            throw Error('Refusing to define recursive macro \\'+key+' = '+parse(m[2], 2));
+        }
         macros[key] = m[2];
         return {op:'def',name:key,val:m[2]}
     } else if (!flat && (m = /^\s*undef\s*\\(\w+)\s*$/u.exec(txt))) {
@@ -347,17 +353,21 @@ function parse(txt, flat) {
     } else { // normal case
         
         // step 1: replace macros with their meaning
-        for(var key in macros) {
-            var macro = RegExp('(?:\\s|\\b|^)\\\\'+key+'\\b', 'gu');
-            if (macro.test(txt)) {
-                txt = txt.replace(macro, ' '+parse(macros[key], 2));
+        var mtxt = /\\\\|\\(\w+)/gu
+        var got;
+        while(got = mtxt.exec(txt)) {
+            if (got[1] in macros) {
+                txt = txt.substr(0,got.index) 
+                    + macros[got[1]] 
+                    + txt.substr(got.index+got[0].length)
+                mtxt.lastIndex = mtxt.lastIndex - 1; // check new text too
             }
         }
         if (flat > 1) return txt; // macro expansion is just text, no parsing
         
         // step 2: find expressions to be evaluated
         // the server only needs to evaluate dice; all else can be client-side later...
-        var dice = /\b([0-9]*)d([0-9]+)(a|d[0-9]*|k[0-9]+)?\b/giu;
+        var dice = /\b([0-9]*)d([0-9]+|[fF])(a|d[0-9]*|k[0-9]+)?\b/giu;
         var other = /(\$\w+)\b|([0-9]+)|([-−+*\/×÷()])/giu;
         var bits = txt.split(RegExp('(?:'+dice.source+'|'+other.source+')', 'giu'));
         var ans = [];
@@ -366,18 +376,19 @@ function parse(txt, flat) {
             if (bits[i+1]) { // dice
                 var die = {
                     'op':'d',
-                    'd':Number(bits[i+1]),
-                    'n':Number(bits[i]) || ((bits[i+2] && bits[i+2].length == 1) ? 2 : 1),
+                    'd':Number(bits[i+1]) || 0,
+//                    'n':Number(bits[i]) || ((bits[i+2] && bits[i+2].length == 1) ? 2 : 1),
+                    'n':Number(bits[i]) || 1,
                 }
                 if (bits[i+2]) {
-                    if (bits[i+2] == 'a') die.k = 1;
-                    else if (bits[i+2] == 'd') die.k = -1;
+                    if (bits[i+2] == 'a') {die.n += 1; die.k = 1;}
+                    else if (bits[i+2] == 'd') {die.n += 1; die.k = -1;}
                     else die.k = Number(bits[i+2].substr(1)) * (bits[i+2][0] == 'd' ? -1 : 1);
-                    if (die.n < Math.abs(die.k)) {
+                    /*if (die.n < Math.abs(die.k)) {
                         // impossible roll; append to preceding string
                         ans[ans.length-1] += (ans[ans.length-1] ? ' ' : '') + bits[i]+'d'+bits[i+1]+bits[i+2];
                         continue;
-                    } else if (die.n == Math.abs(die.k)) {
+                    } else*/ if (die.n == Math.abs(die.k)) {
                         delete die.k;
                     }
                 }
@@ -555,7 +566,10 @@ function addFormat(m) {
     tr.lastElementChild.setAttribute('title', m.raw);
 
     tbody.appendChild(tr);
-    while (document.body.clientHeight > window.innerHeight && tbody.childElementCount > 100) tbody.removeChild(tbody.firstElementChild);
+    while (document.body.clientHeight > window.innerHeight && tbody.childElementCount > 100) {
+        tbody.removeChild(tbody.firstElementChild);
+        tbody.removeChild(tbody.firstElementChild); // to keep even/odd display consistent
+    }
     tr.scrollIntoView();
     document.getElementById('sender').scrollIntoView(false);
     document.getElementById('roll').focus();
@@ -596,6 +610,8 @@ function jsonToText(m, depth) {
         var bit = m.roll.map(function(x){
             if (x.d == 100) {
                 return '<span class="dice d10'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d100">'+Math.floor(x['=']/10)+'</span><span class="dice d10'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d100">'+(x['=']%10)+'</span>';
+            } else if (x.d == 0) {
+                return '<span class="dice dF'+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="dF'+'">'+'− +'[x['=']+1]+'</span>';
             } else {
                 return '<span class="dice d'+x.d+('drop' in x ? ' omit':'')+' r'+x['=']+'" title="d'+x.d+'">'+x['=']+'</span>';
             }

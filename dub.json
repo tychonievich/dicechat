@@ -11,5 +11,5 @@
     "versions": ["VibeDefaultMain"],
     "subConfigurations":{"vibe-d:tls":"openssl-1.1"},
     "license": "Public Domain",
-    "name": "dicechat"
+    "name": "wsengine"
 }

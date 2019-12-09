@@ -30,17 +30,18 @@ table { border-collapse: collapse; }
 th,td { text-align:left; padding:0.25ex 1ex; }
 td:first-child { font-size:70.7% }
 td:nth-child(3) { border-left: thin solid rgba(0,0,0, 0.5); overflow-wrap:anywhere; }
-tr:nth-child(2n) { background-color:rgba(0,0,0, 0.125); }
+tr:nth-child(2n) { background: linear-gradient(to right, rgba(255,255,255,0.375),rgba(0,0,0,0)); }
 td:nth-child(2) { text-align: right; }
 
 th { background:rgba(0,0,0, 0.5); color:white; }
 
-.server { color: #606; }
+.server { color: #066; }
 .client { color: #066; }
 .luther { color: #000; }
 .markham { color: #5c4033; }
 .jonathan { color: #334c00; }
 .matt { color: blue; }
+.michael { color: purple; }
 
 td > span[title] { box-shadow: 0 0 0.25ex 0.25ex rgba(255,255,255,0.5); padding:0.25ex; border-radius:0.5ex; }
 
